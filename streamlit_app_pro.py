@@ -40,76 +40,55 @@ if 'total_scans' not in st.session_state:
 if 'phishing_detected' not in st.session_state:
     st.session_state.phishing_detected = 0
 
-# Theme colors
-COLORS = {
-    'light': {
-        'bg': '#FFFFFF',
-        'text': '#1E293B',
-        'primary': '#2563EB',
-        'danger': '#DC2626',
-        'warning': '#F59E0B',
-        'success': '#059669',
-    },
-    'dark': {
-        'bg': '#1E293B',
-        'text': '#F1F5F9',
-        'primary': '#3B82F6',
-        'danger': '#EF4444',
-        'warning': '#FBBF24',
-        'success': '#10B981',
-    }
-}
-
-theme = 'dark' if st.session_state.dark_mode else 'light'
-
-# Custom CSS
-st.markdown(f"""
+# Custom CSS (simplified - removed dark mode styling as Streamlit handles it)
+st.markdown("""
 <style>
-    .main-header {{
-        font-size: 3rem;
+    .main-header {
+        font-size: 4rem;
         font-weight: bold;
         text-align: center;
-        color: {COLORS[theme]['primary']};
+        color: #2563EB;
         margin-bottom: 0.5rem;
-    }}
-    .sub-header {{
-        font-size: 1.2rem;
+        line-height: 1.2;
+    }
+    .sub-header {
+        font-size: 1.4rem;
         text-align: center;
-        color: {COLORS[theme]['text']};
+        color: #64748B;
         margin-bottom: 2rem;
-        opacity: 0.8;
-    }}
-    .phishing-alert {{
+        opacity: 0.9;
+    }
+    .phishing-alert {
         background-color: #FEE2E2;
-        border-left: 5px solid {COLORS[theme]['danger']};
+        border-left: 5px solid #DC2626;
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
-    }}
-    .legitimate-alert {{
+    }
+    .legitimate-alert {
         background-color: #D1FAE5;
-        border-left: 5px solid {COLORS[theme]['success']};
+        border-left: 5px solid #059669;
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
-    }}
-    .suspicious-alert {{
+    }
+    .suspicious-alert {
         background-color: #FEF3C7;
-        border-left: 5px solid {COLORS[theme]['warning']};
+        border-left: 5px solid #F59E0B;
         padding: 1rem;
         border-radius: 0.5rem;
         margin: 1rem 0;
-    }}
-    .metric-card {{
-        background: linear-gradient(135deg, {COLORS[theme]['primary']}15 0%, {COLORS[theme]['primary']}05 100%);
+    }
+    .metric-card {
+        background: linear-gradient(135deg, #2563EB15 0%, #2563EB05 100%);
         padding: 1.5rem;
         border-radius: 0.75rem;
-        border: 1px solid {COLORS[theme]['primary']}30;
+        border: 1px solid #2563EB30;
         text-align: center;
-    }}
-    .stButton>button {{
+    }
+    .stButton>button {
         width: 100%;
-        background-color: {COLORS[theme]['primary']};
+        background-color: #2563EB;
         color: white;
         font-weight: bold;
         padding: 0.75rem;
@@ -117,18 +96,17 @@ st.markdown(f"""
         border: none;
         font-size: 1.1rem;
         transition: all 0.3s;
-    }}
-    .stButton>button:hover {{
+    }
+    .stButton>button:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-    }}
-    .history-item {{
-        background-color: {COLORS[theme]['bg']};
+    }
+    .history-item {
         padding: 1rem;
         border-radius: 0.5rem;
         border: 1px solid #E2E8F0;
         margin: 0.5rem 0;
-    }}
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -430,20 +408,14 @@ Always verify suspicious URLs independently.
 
 def main():
     # Header
-    col1, col2, col3 = st.columns([1, 6, 1])
+    col1, col2 = st.columns([1, 6])
     
     with col1:
-        st.image("https://img.icons8.com/fluency/96/security-checked.png", width=80)
+        st.image("https://img.icons8.com/fluency/96/security-checked.png", width=100)
     
     with col2:
-        st.markdown('<p class="main-header">🛡️ Phishing Detector Pro</p>', unsafe_allow_html=True)
+        st.markdown('<p class="main-header">🛡️ Phishing URL Detector</p>', unsafe_allow_html=True)
         st.markdown('<p class="sub-header">Advanced AI-Powered URL Security Analysis with Batch Processing & Reports</p>', unsafe_allow_html=True)
-    
-    with col3:
-        # Dark mode toggle
-        if st.button("🌓" if st.session_state.dark_mode else "🌞"):
-            st.session_state.dark_mode = not st.session_state.dark_mode
-            st.rerun()
     
     # Load model
     model, scaler = load_model()
@@ -470,11 +442,6 @@ def main():
         if st.session_state.total_scans > 0:
             threat_rate = (st.session_state.phishing_detected / st.session_state.total_scans) * 100
             st.metric("Threat Rate", f"{threat_rate:.1f}%")
-        
-        st.markdown("---")
-        st.caption("Model Accuracy: 89.6%")
-        st.caption("Features: 99")
-        st.caption("Domains Whitelisted: " + str(len(KNOWN_LEGITIMATE_DOMAINS)))
     
     # Main content based on page selection
     if page == "🔍 Single URL Scan":
@@ -488,15 +455,6 @@ def main():
     
     # Footer
     st.markdown("---")
-    st.markdown(
-        """
-        <div style="text-align: center; color: #64748B; font-size: 0.9rem;">
-            <p>Made with ❤️ using Streamlit | Phishing Detector Pro v2.0</p>
-            <p style="font-size: 0.8rem;">⚠️ For educational purposes. Do not rely solely on this tool for critical security decisions.</p>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
 def render_single_scan(model, scaler):
     """Single URL scan interface"""
@@ -513,21 +471,6 @@ def render_single_scan(model, scaler):
     
     with col2:
         analyze_button = st.button("🔎 Analyze", type="primary")
-    
-    # Example URLs
-    with st.expander("📝 Try Example URLs"):
-        cols = st.columns(3)
-        examples = [
-            ("Legitimate", "https://www.github.com"),
-            ("Phishing", "http://paypa1-secure.com"),
-            ("Suspicious", "https://bit.ly/test")
-        ]
-        
-        for idx, (label, url) in enumerate(examples):
-            with cols[idx]:
-                if st.button(f"{label}\n`{url}`", key=f"ex_{idx}"):
-                    url_input = url
-                    analyze_button = True
     
     if analyze_button and url_input:
         if not url_input.startswith(('http://', 'https://')):
