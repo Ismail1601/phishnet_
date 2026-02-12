@@ -24,8 +24,8 @@ from io import BytesIO
 
 # Page configuration
 st.set_page_config(
-    page_title="Phishing URL Detector Pro",
-    page_icon="🛡️",
+    page_title="Phishing URL Detector",
+    page_icon='ShieldSearch.png',
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -850,3 +850,4 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
