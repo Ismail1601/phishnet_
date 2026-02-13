@@ -21,11 +21,12 @@ import time
 import json
 import base64
 from io import BytesIO
+import idna  # For punycode handling
 
 # Page configuration
 st.set_page_config(
-    page_title="Phishing URL Detector",
-    page_icon='ShieldSearch.png',
+    page_title="Phishing URL Detector Pro",
+    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -127,6 +128,28 @@ TYPOSQUATTING_PATTERNS = [
     'amaz0n', 'app1e', 'netf1ix', 'yah00', 'tw1tter',
 ]
 
+# Common homograph characters used in IDN attacks
+HOMOGRAPH_CHARS = {
+    'а': 'a',  # Cyrillic a
+    'е': 'e',  # Cyrillic e
+    'о': 'o',  # Cyrillic o
+    'р': 'p',  # Cyrillic p
+    'с': 'c',  # Cyrillic c
+    'у': 'y',  # Cyrillic y
+    'х': 'x',  # Cyrillic x
+    'ѕ': 's',  # Cyrillic s
+    'і': 'i',  # Cyrillic i
+    'ј': 'j',  # Cyrillic j
+    'ԁ': 'd',  # Cyrillic d
+    'ɡ': 'g',  # Latin small letter g
+    'һ': 'h',  # Cyrillic h
+    'ӏ': 'l',  # Cyrillic l
+    'ո': 'n',  # Armenian n
+    'ᴑ': 'o',  # Latin small letter o
+    'ԛ': 'q',  # Cyrillic q
+    'ѡ': 'w',  # Cyrillic w
+}
+
 SUSPICIOUS_KEYWORDS = [
     'verify', 'account', 'update', 'confirm', 'suspend', 'secure',
     'signin', 'login', 'banking', 'alert', 'warning', 'unlock',
@@ -168,12 +191,153 @@ def count_suspicious_keywords(url):
 def is_ip_address(domain):
     return bool(re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$', domain))
 
+def decode_punycode(domain):
+    """
+    Decode punycode domain and detect IDN homograph attacks
+    Returns: (decoded_domain, is_punycode, has_homographs, homograph_warning)
+    """
+    is_punycode = False
+    has_homographs = False
+    homograph_warning = None
+    decoded = domain
+    
+    try:
+        # Check if domain contains punycode (xn--)
+        if 'xn--' in domain.lower():
+            is_punycode = True
+            # Decode using idna library
+            decoded = idna.decode(domain)
+            
+            # Check for homograph characters
+            homograph_chars_found = []
+            for char in decoded:
+                if char in HOMOGRAPH_CHARS:
+                    has_homographs = True
+                    homograph_chars_found.append(f"{char}→{HOMOGRAPH_CHARS[char]}")
+            
+            if has_homographs:
+                # Check if decoded looks like a legitimate domain
+                decoded_ascii = ''.join([HOMOGRAPH_CHARS.get(c, c) for c in decoded])
+                if decoded_ascii.lower() in KNOWN_LEGITIMATE_DOMAINS:
+                    homograph_warning = f"Homograph attack! Looks like '{decoded_ascii}' but contains: {', '.join(homograph_chars_found[:3])}"
+                else:
+                    homograph_warning = f"Contains suspicious characters: {', '.join(homograph_chars_found[:3])}"
+        else:
+            # Check for non-ASCII characters even without xn--
+            if not all(ord(c) < 128 for c in domain):
+                has_homographs = True
+                homograph_chars_found = []
+                for char in domain:
+                    if char in HOMOGRAPH_CHARS:
+                        homograph_chars_found.append(f"{char}→{HOMOGRAPH_CHARS[char]}")
+                
+                if homograph_chars_found:
+                    # Try to convert to ASCII equivalent
+                    ascii_equiv = ''.join([HOMOGRAPH_CHARS.get(c, c) for c in domain])
+                    if ascii_equiv.lower() in KNOWN_LEGITIMATE_DOMAINS:
+                        homograph_warning = f"Homograph attack! Impersonates '{ascii_equiv}' using: {', '.join(homograph_chars_found[:3])}"
+                    else:
+                        homograph_warning = f"Non-ASCII characters detected: {', '.join(homograph_chars_found[:3])}"
+    
+    except Exception as e:
+        # If decoding fails, it might still be suspicious
+        pass
+    
+    return decoded, is_punycode, has_homographs, homograph_warning
+
+def check_full_url_for_phishing(url):
+    """
+    Check entire URL including query parameters for suspicious domains
+    This catches cases like: google.com/search?q=phishing-domain.com
+    Returns: (is_suspicious, suspicious_domain, reason)
+    """
+    try:
+        import urllib.parse
+        
+        # Decode URL-encoded characters
+        decoded_url = urllib.parse.unquote(url)
+        
+        # Extract all potential domains from the entire URL
+        # Look for patterns like: .com, .net, .org, etc.
+        domain_pattern = r'([a-zA-Z0-9а-яА-Я-]+\.)+[a-zA-Z]{2,}'
+        potential_domains = re.findall(domain_pattern, decoded_url)
+        
+        parsed = urllib.parse.urlparse(url)
+        actual_domain = parsed.netloc
+        
+        # Check each potential domain found in the URL
+        for match in potential_domains:
+            # Skip if it's the actual domain
+            if match in actual_domain:
+                continue
+            
+            # Clean up the match
+            domain_candidate = match.strip('.')
+            
+            # Check for homographs in this domain
+            _, _, has_homographs, warning = decode_punycode(domain_candidate)
+            
+            if has_homographs and warning:
+                return True, domain_candidate, f"Suspicious domain in URL: {warning}"
+            
+            # Check if it looks like a well-known domain (potential phishing)
+            base = get_base_domain(domain_candidate)
+            
+            # Check for typosquatting patterns
+            is_typo, pattern = check_typosquatting(domain_candidate)
+            if is_typo:
+                return True, domain_candidate, f"Typosquatting pattern '{pattern}' found in URL parameters"
+            
+            # Check if it mimics a legitimate domain
+            for legit_domain in KNOWN_LEGITIMATE_DOMAINS:
+                # Simple similarity check
+                if legit_domain in domain_candidate.lower() or domain_candidate.lower() in legit_domain:
+                    if domain_candidate.lower() != actual_domain.lower():
+                        return True, domain_candidate, f"Suspicious domain '{domain_candidate}' found in URL (mimics {legit_domain})"
+        
+        # Check for URL-encoded homograph characters
+        if '%D0%' in url or '%D1%' in url:  # Cyrillic characters in URL encoding
+            return True, "URL-encoded", "URL contains encoded Cyrillic characters (potential homograph attack)"
+        
+        # Check for other suspicious Unicode ranges
+        if any(encoded in url for encoded in ['%C2%', '%C3%', '%E2%']):
+            # Decode and check
+            if not all(ord(c) < 128 for c in decoded_url):
+                # Check if decoded URL contains homographs
+                for char in decoded_url:
+                    if char in HOMOGRAPH_CHARS:
+                        return True, "URL-encoded", f"URL contains encoded homograph character: {char}→{HOMOGRAPH_CHARS[char]}"
+        
+    except Exception as e:
+        pass
+    
+    return False, None, None
+
+def convert_to_punycode(domain):
+    """
+    Convert domain to punycode if it contains non-ASCII characters
+    Returns: (punycode_domain, was_converted)
+    """
+    try:
+        # Try to encode to punycode
+        punycode = idna.encode(domain).decode('ascii')
+        was_converted = (punycode != domain)
+        return punycode, was_converted
+    except:
+        return domain, False
+
 def extract_url_features(url):
-    """Extract 99 features from URL - same as before"""
+    """Extract 99 features from URL with punycode handling"""
     features = {}
     parsed = urlparse(url)
     
+    # Decode punycode if present for more accurate feature extraction
     domain = parsed.netloc
+    decoded_domain, is_punycode, _, _ = decode_punycode(domain)
+    
+    # Use decoded domain for feature extraction
+    working_domain = decoded_domain if is_punycode else domain
+    
     directory = parsed.path.rsplit('/', 1)[0] if '/' in parsed.path else ''
     file_part = parsed.path.rsplit('/', 1)[1] if '/' in parsed.path else ''
     params = parsed.query
@@ -189,18 +353,18 @@ def extract_url_features(url):
     features['qty_tld_url'] = float(url.count('.'))
     features['length_url'] = float(len(url))
     
-    # Domain features
+    # Domain features (use decoded domain)
     for char, name in [('.', 'dot'), ('-', 'hyphen'), ('_', 'underline'), ('/', 'slash'),
                        ('?', 'questionmark'), ('=', 'equal'), ('@', 'at'), ('&', 'and'),
                        ('!', 'exclamation'), (' ', 'space'), ('~', 'tilde'), (',', 'comma'),
                        ('+', 'plus'), ('*', 'asterisk'), ('#', 'hashtag'), ('$', 'dollar'),
                        ('%', 'percent')]:
-        features[f'qty_{name}_domain'] = float(domain.count(char))
+        features[f'qty_{name}_domain'] = float(working_domain.count(char))
     
-    features['qty_vowels_domain'] = float(count_vowels(domain))
-    features['domain_length'] = float(len(domain))
-    features['domain_in_ip'] = float(1 if is_ip_address(domain) else 0)
-    features['server_client_domain'] = float(has_client_server_words(domain))
+    features['qty_vowels_domain'] = float(count_vowels(working_domain))
+    features['domain_length'] = float(len(working_domain))
+    features['domain_in_ip'] = float(1 if is_ip_address(working_domain) else 0)
+    features['server_client_domain'] = float(has_client_server_words(working_domain))
     
     # Directory, file, params features
     for component, comp_name in [(directory, 'directory'), (file_part, 'file'), (params, 'params')]:
@@ -235,15 +399,26 @@ def load_model():
         return None, None
 
 def analyze_url(url, model, scaler):
-    """Main analysis function"""
+    """Main analysis function with punycode detection"""
     parsed = urlparse(url)
     domain = parsed.netloc
     base_domain = get_base_domain(domain)
+    
+    # FIRST: Check entire URL for embedded phishing domains
+    is_url_suspicious, suspicious_domain, url_reason = check_full_url_for_phishing(url)
+    
+    # Punycode detection and conversion
+    decoded_domain, is_punycode, has_homographs, homograph_warning = decode_punycode(domain)
+    punycode_domain, was_converted = convert_to_punycode(domain)
     
     analysis = {
         'url': url,
         'domain': domain,
         'base_domain': base_domain,
+        'decoded_domain': decoded_domain if is_punycode else domain,
+        'is_punycode': is_punycode,
+        'has_homographs': has_homographs,
+        'punycode_warning': homograph_warning,
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'prediction': None,
         'confidence': 0,
@@ -253,12 +428,49 @@ def analyze_url(url, model, scaler):
         'suggestions': []
     }
     
-    # Rule-based checks
-    if base_domain in KNOWN_LEGITIMATE_DOMAINS:
-        analysis['prediction'] = 'LEGITIMATE'
-        analysis['confidence'] = 0.99
-        analysis['risk_level'] = 'Low'
-        analysis['reasons'].append(f"✅ Whitelisted domain: {base_domain}")
+    # CRITICAL: Check for embedded phishing in URL parameters
+    if is_url_suspicious:
+        analysis['prediction'] = 'PHISHING'
+        analysis['confidence'] = 0.95
+        analysis['risk_level'] = 'Critical'
+        analysis['reasons'].append(f"🚨 {url_reason}")
+        if suspicious_domain:
+            analysis['reasons'].append(f"🔍 Found in URL: {suspicious_domain}")
+        analysis['flags'].append('Embedded Phishing Domain')
+        return analysis
+    
+    # CRITICAL: Check for homograph attacks in domain
+    if has_homographs and homograph_warning:
+        analysis['prediction'] = 'PHISHING'
+        analysis['confidence'] = 0.98
+        analysis['risk_level'] = 'Critical'
+        analysis['reasons'].append(f"🚨 {homograph_warning}")
+        analysis['flags'].append('Homograph Attack')
+        if is_punycode:
+            analysis['reasons'].append(f"🔍 Punycode detected: {domain}")
+            analysis['reasons'].append(f"📝 Decodes to: {decoded_domain}")
+        return analysis
+    
+    # Rule-based checks (use decoded domain for checking)
+    check_domain = decoded_domain if is_punycode else base_domain
+    
+    # IMPORTANT: Only whitelist if the ACTUAL domain is legitimate
+    # AND there are no suspicious patterns in the full URL
+    if check_domain in KNOWN_LEGITIMATE_DOMAINS:
+        # But warn if punycode was used
+        if is_punycode:
+            analysis['prediction'] = 'SUSPICIOUS'
+            analysis['confidence'] = 0.70
+            analysis['risk_level'] = 'Medium'
+            analysis['reasons'].append(f"⚠️ Punycode used for known domain")
+            analysis['reasons'].append(f"🔍 Original: {domain}")
+            analysis['reasons'].append(f"📝 Decodes to: {decoded_domain}")
+            analysis['flags'].append('Punycode')
+        else:
+            analysis['prediction'] = 'LEGITIMATE'
+            analysis['confidence'] = 0.99
+            analysis['risk_level'] = 'Low'
+            analysis['reasons'].append(f"✅ Whitelisted domain: {base_domain}")
         return analysis
     
     is_typo, typo_pattern = check_typosquatting(domain)
@@ -838,7 +1050,8 @@ def display_analysis_results(analysis):
     # Technical details
     with st.expander("🔧 Technical Breakdown"):
         parsed = urlparse(analysis['url'])
-        st.json({
+        
+        tech_info = {
             "Protocol": parsed.scheme or "N/A",
             "Domain": parsed.netloc or "N/A",
             "Path": parsed.path or "/",
@@ -846,8 +1059,20 @@ def display_analysis_results(analysis):
             "HTTPS": "Yes" if analysis['url'].startswith('https://') else "No",
             "Domain Length": len(parsed.netloc),
             "URL Length": len(analysis['url'])
-        })
+        }
+        
+        # Add punycode info if applicable
+        if analysis.get('is_punycode'):
+            tech_info["Punycode Detected"] = "Yes"
+            tech_info["Decoded Domain"] = analysis.get('decoded_domain', 'N/A')
+            tech_info["Original (Punycode)"] = parsed.netloc
+        
+        if analysis.get('has_homographs'):
+            tech_info["Homograph Characters"] = "Detected"
+            if analysis.get('punycode_warning'):
+                tech_info["Warning"] = analysis['punycode_warning']
+        
+        st.json(tech_info)
 
 if __name__ == "__main__":
     main()
-
