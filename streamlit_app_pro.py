@@ -24,9 +24,19 @@ from io import BytesIO
 import idna  # For punycode handling
 
 # Page configuration
+import os
+
+# Check for custom favicon
+if os.path.exists('favicon.png'):
+    page_icon = 'favicon.png'
+elif os.path.exists('favicon.ico'):
+    page_icon = 'favicon.ico'
+else:
+    page_icon = '🛡️'  # Default emoji icon
+
 st.set_page_config(
-    page_title="Phishing URL Detector Pro",
-    page_icon="🛡️",
+    page_title="Phishing URL Detector",
+    page_icon=page_icon,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -130,6 +140,7 @@ TYPOSQUATTING_PATTERNS = [
 
 # Common homograph characters used in IDN attacks
 HOMOGRAPH_CHARS = {
+    # Cyrillic letters
     'а': 'a',  # Cyrillic a
     'е': 'e',  # Cyrillic e
     'о': 'o',  # Cyrillic o
@@ -141,13 +152,39 @@ HOMOGRAPH_CHARS = {
     'і': 'i',  # Cyrillic i
     'ј': 'j',  # Cyrillic j
     'ԁ': 'd',  # Cyrillic d
-    'ɡ': 'g',  # Latin small letter g
     'һ': 'h',  # Cyrillic h
     'ӏ': 'l',  # Cyrillic l
     'ո': 'n',  # Armenian n
-    'ᴑ': 'o',  # Latin small letter o
     'ԛ': 'q',  # Cyrillic q
     'ѡ': 'w',  # Cyrillic w
+    # Greek letters
+    'α': 'a',  # Greek alpha
+    'β': 'b',  # Greek beta
+    'γ': 'g',  # Greek gamma
+    'δ': 'd',  # Greek delta
+    'ε': 'e',  # Greek epsilon
+    'ζ': 'z',  # Greek zeta
+    'η': 'n',  # Greek eta
+    'θ': 'o',  # Greek theta
+    'ι': 'i',  # Greek iota
+    'κ': 'k',  # Greek kappa
+    'λ': 'l',  # Greek lambda
+    'μ': 'u',  # Greek mu
+    'ν': 'v',  # Greek nu
+    'ξ': 'x',  # Greek xi
+    'ο': 'o',  # Greek omicron
+    'π': 'p',  # Greek pi
+    'ρ': 'p',  # Greek rho
+    'σ': 's',  # Greek sigma
+    'τ': 't',  # Greek tau
+    'υ': 'y',  # Greek upsilon
+    'φ': 'f',  # Greek phi
+    'χ': 'x',  # Greek chi
+    'ψ': 'ps', # Greek psi
+    'ω': 'w',  # Greek omega
+    # Other lookalikes
+    'ɡ': 'g',  # Latin small letter g
+    'ᴑ': 'o',  # Latin small letter o
 }
 
 SUSPICIOUS_KEYWORDS = [
@@ -623,7 +660,16 @@ def main():
     col1, col2 = st.columns([1, 6])
     
     with col1:
-        st.image("https://img.icons8.com/fluency/96/security-checked.png", width=100)
+        # Check for custom logo
+        import os
+        if os.path.exists('logo.png'):
+            st.image('logo.png', width=120)
+        elif os.path.exists('logo.jpg'):
+            st.image('logo.jpg', width=120)
+        elif os.path.exists('logo.svg'):
+            st.image('logo.svg', width=120)
+        else:
+            st.image("https://img.icons8.com/fluency/96/security-checked.png", width=100)
     
     with col2:
         st.markdown('<p class="main-header">🛡️ Phishing URL Detector</p>', unsafe_allow_html=True)
@@ -637,7 +683,17 @@ def main():
     
     # Sidebar
     with st.sidebar:
-        st.image("https://img.icons8.com/fluency/96/security-checked.png", width=60)
+        # Logo - check if custom logo exists, otherwise use default
+        import os
+        if os.path.exists('logo.png'):
+            st.image('logo.png', width=80)
+        elif os.path.exists('logo.jpg'):
+            st.image('logo.jpg', width=80)
+        elif os.path.exists('logo.svg'):
+            st.image('logo.svg', width=80)
+        else:
+            st.image("https://img.icons8.com/fluency/96/security-checked.png", width=60)
+        
         st.title("Navigation")
         
         page = st.radio("", ["🔍 Single URL Scan", "📊 Batch Analysis", "📈 Analytics Dashboard", "📜 Scan History"])
@@ -751,17 +807,29 @@ def analyze_batch_urls(urls, model, scaler):
             analysis = analyze_url(url, model, scaler)
             results.append(analysis)
             
+            # Update global stats
             st.session_state.total_scans += 1
             if analysis['prediction'] == 'PHISHING':
                 st.session_state.phishing_detected += 1
+            
+            # Add to scan history
+            st.session_state.scan_history.insert(0, analysis)
+            if len(st.session_state.scan_history) > 50:
+                st.session_state.scan_history.pop()
+                
         except Exception as e:
-            results.append({
+            error_result = {
                 'url': url,
+                'domain': 'ERROR',
+                'base_domain': 'ERROR',
                 'prediction': 'ERROR',
                 'confidence': 0,
                 'risk_level': 'Unknown',
-                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
+                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'reasons': [f'Error analyzing URL: {str(e)}'],
+                'flags': ['Error']
+            }
+            results.append(error_result)
         
         progress_bar.progress((idx + 1) / len(urls))
     
@@ -772,7 +840,7 @@ def analyze_batch_urls(urls, model, scaler):
         {
             'URL': r['url'],
             'Prediction': r['prediction'],
-            'Confidence': f"{r['confidence']:.1%}",
+            'Confidence': f"{r['confidence']:.1%}" if r['prediction'] != 'ERROR' else 'N/A',
             'Risk Level': r['risk_level'],
             'Timestamp': r['timestamp']
         }
