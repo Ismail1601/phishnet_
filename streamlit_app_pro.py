@@ -660,7 +660,7 @@ def main():
         logo_path = os.path.join(BASE_DIR, "favicon.png")
 
         if os.path.exists(logo_path):
-            st.image(logo_path, width=400)
+            st.image(logo_path, use_container_width=True)
 
 
     
