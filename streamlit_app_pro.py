@@ -657,7 +657,7 @@ def main():
     col1, col2 = st.columns([1, 6])
     
     with col1:
-        logo_path = os.path.join(BASE_DIR, "logo.png")
+        logo_path = os.path.join(BASE_DIR, "favicon.png")
 
         if os.path.exists(logo_path):
             st.image(logo_path, width=150)
@@ -1129,6 +1129,7 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
 
 
 
