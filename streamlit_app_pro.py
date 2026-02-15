@@ -38,15 +38,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
-
-st.set_page_config(
-    page_title="Phishing URL Detector",
-    page_icon=page_icon,
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # Initialize session state
 if 'scan_history' not in st.session_state:
     st.session_state.scan_history = []
@@ -1138,6 +1129,7 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
 
 
 
