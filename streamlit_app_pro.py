@@ -27,12 +27,8 @@ import idna  # For punycode handling
 import os
 
 # Check for custom favicon
-if os.path.exists('favicon.png'):
-    page_icon = 'favicon.png'
-elif os.path.exists('favicon.ico'):
-    page_icon = 'favicon.ico'
-else:
-    page_icon = '🛡️'  # Default emoji icon
+page_icon = "favicon.png" if os.path.exists("favicon.png") else "🛡️"
+
 
 st.set_page_config(
     page_title="Phishing URL Detector",
@@ -660,20 +656,12 @@ def main():
     col1, col2 = st.columns([1, 6])
     
     with col1:
-        # Check for custom logo
-        import os
-        if os.path.exists('logo.png'):
-            st.image('logo.png', width=120)
-        elif os.path.exists('logo.jpg'):
-            st.image('logo.jpg', width=120)
-        elif os.path.exists('logo.svg'):
-            st.image('logo.svg', width=120)
-        else:
-            st.image("https://img.icons8.com/fluency/96/security-checked.png", width=100)
+    st.image("logo.png", width=150)
+
     
     with col2:
-        st.markdown('<p class="main-header">🛡️ Phishing URL Detector</p>', unsafe_allow_html=True)
-        st.markdown('<p class="sub-header">Advanced AI-Powered URL Security Analysis with Batch Processing & Reports</p>', unsafe_allow_html=True)
+        st.markdown('<p class="main-header">Phishing URL Detector</p>', unsafe_allow_html=True)
+        st.markdown('<p class="sub-header">AI-Powered URL Threat Intelligence</p>', unsafe_allow_html=True)
     
     # Load model
     model, scaler = load_model()
@@ -683,16 +671,8 @@ def main():
     
     # Sidebar
     with st.sidebar:
-        # Logo - check if custom logo exists, otherwise use default
-        import os
-        if os.path.exists('logo.png'):
-            st.image('logo.png', width=80)
-        elif os.path.exists('logo.jpg'):
-            st.image('logo.jpg', width=80)
-        elif os.path.exists('logo.svg'):
-            st.image('logo.svg', width=80)
-        else:
-            st.image("https://img.icons8.com/fluency/96/security-checked.png", width=60)
+    st.image("logo.png", width=90)
+
         
         st.title("Navigation")
         
@@ -1144,3 +1124,4 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
