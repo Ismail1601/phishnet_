@@ -52,7 +52,7 @@ if 'phishing_detected' not in st.session_state:
 st.markdown("""
 <style>
     .main-header {
-        font-size: 3rem;
+        font-size: 5rem;
         font-weight: bold;
         text-align: center;
         color: #2563EB;
@@ -60,7 +60,7 @@ st.markdown("""
         line-height: 1.2;
     }
     .sub-header {
-        font-size: 1.1rem;
+        font-size: 2.56rem;
         text-align: center;
         color: #64748B;
         margin-bottom: 2rem;
@@ -660,7 +660,7 @@ def main():
         logo_path = os.path.join(BASE_DIR, "favicon.png")
 
         if os.path.exists(logo_path):
-            st.image(logo_path, width=200)
+            st.image(logo_path, width=400)
 
 
     
@@ -1129,6 +1129,7 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
 
 
 
