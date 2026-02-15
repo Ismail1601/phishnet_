@@ -666,7 +666,7 @@ def main():
     
     with col2:
         st.markdown('<p class="main-header">Phishing URL Detector</p>', unsafe_allow_html=True)
-        st.markdown('<p class="sub-header">AI-Powered URL Threat Intelligence</p>', unsafe_allow_html=True)
+        st.markdown('<p class="sub-header">ML-based  URL Threat Detection</p>', unsafe_allow_html=True)
     
     # Load model
     model, scaler = load_model()
