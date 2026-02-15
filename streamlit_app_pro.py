@@ -43,15 +43,81 @@ if 'scan_history' not in st.session_state:
     st.session_state.scan_history = []
 if 'dark_mode' not in st.session_state:
     st.session_state.dark_mode = False
-if "theme_mode" not in st.session_state:
-    st.session_state.theme_mode = "dark"
+# Theme mode (light/dark toggle)
 if 'total_scans' not in st.session_state:
     st.session_state.total_scans = 0
 if 'phishing_detected' not in st.session_state:
     st.session_state.phishing_detected = 0
 
 # Custom CSS (simplified - removed dark mode styling as Streamlit handles it)
-
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 5rem;
+        font-weight: bold;
+        text-align: center;
+        color: #2563EB;
+        margin-bottom: 0.5rem;
+        line-height: 1.2;
+    }
+    .sub-header {
+        font-size: 2.56rem;
+        text-align: center;
+        color: #64748B;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+    }
+    .phishing-alert {
+        background-color: #FEE2E2;
+        border-left: 5px solid #DC2626;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+    }
+    .legitimate-alert {
+        background-color: #D1FAE5;
+        border-left: 5px solid #059669;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+    }
+    .suspicious-alert {
+        background-color: #FEF3C7;
+        border-left: 5px solid #F59E0B;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
+    }
+    .metric-card {
+        background: linear-gradient(135deg, #2563EB15 0%, #2563EB05 100%);
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        border: 1px solid #2563EB30;
+        text-align: center;
+    }
+    .stButton>button {
+        width: 100%;
+        background-color: #2563EB;
+        color: white;
+        font-weight: bold;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        border: none;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+    .history-item {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid #E2E8F0;
+        margin: 0.5rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Configuration
 KNOWN_LEGITIMATE_DOMAINS = {
@@ -613,19 +679,8 @@ def main():
     with st.sidebar:
         st.image("favicon.png", width=90)
 
-        st.markdown("### 🎨 Theme")
-
-        theme_toggle = st.toggle(
-        "Dark Mode",
-        value=(st.session_state.theme_mode == "dark")
-    )
-
-        st.session_state.theme_mode = "dark" if theme_toggle else "light"
-
-        st.markdown("---")
-
+        
         st.title("Navigation")
-
         
         page = st.radio("", ["🔍 Single URL Scan", "📊 Batch Analysis", "📈 Analytics Dashboard", "📜 Scan History"])
         
@@ -641,51 +696,7 @@ def main():
         if st.session_state.total_scans > 0:
             threat_rate = (st.session_state.phishing_detected / st.session_state.total_scans) * 100
             st.metric("Threat Rate", f"{threat_rate:.1f}%")
-        # === Adaptive Theme Styling ===
-        if st.session_state.theme_mode == "dark":
-            bg_color = "#0E1117"
-            text_color = "#FAFAFA"
-            card_bg = "#1E293B"
-            accent = "#2563EB"
-            subtitle_color = "#94A3B8"
-            glow = "0 0 20px rgba(37,99,235,0.8)"
-        else:
-            bg_color = "#FFFFFF"
-            text_color = "#111827"
-            card_bg = "#F8FAFC"
-            accent = "#2563EB"
-            subtitle_color = "#64748B"
-            glow = "0 0 12px rgba(37,99,235,0.4)"
-
-            st.markdown(f"""
-<style>
-html, body, [class*="css"] {{
-    background-color: {bg_color};
-    color: {text_color};
-}}
-
-.main-header {{
-    font-size: 3.5rem;
-    font-weight: 700;
-    text-align: center;
-    color: {accent};
-}}
-
-.sub-header {{
-    font-size: 1.3rem;
-    text-align: center;
-    color: {subtitle_color};
-}}
-
-.stButton>button {{
-    background-color: {accent};
-    color: white;
-    border-radius: 10px;
-}}
-
-</style>
-""", unsafe_allow_html=True)
-
+    
     # Main content based on page selection
     if page == "🔍 Single URL Scan":
         render_single_scan(model, scaler)
