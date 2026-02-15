@@ -654,7 +654,7 @@ Always verify suspicious URLs independently.
 
 def main():
     # Header
-    col1, col2 = st.columns([1, 6])
+    col1, col2 = st.columns([2, 6])
     
     with col1:
         logo_path = os.path.join(BASE_DIR, "favicon.png")
