@@ -27,12 +27,15 @@ import idna  # For punycode handling
 import os
 
 # Check for custom favicon
-favicon_path = os.path.join(os.path.dirname(__file__), "favicon.png")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+favicon_path = os.path.join(BASE_DIR, "favicon.png")
 
 st.set_page_config(
     page_title="PhishNet",
     page_icon=favicon_path if os.path.exists(favicon_path) else "🛡️",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 
@@ -663,12 +666,11 @@ def main():
     col1, col2 = st.columns([1, 6])
     
     with col1:
-        logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
+        logo_path = os.path.join(BASE_DIR, "logo.png")
 
         if os.path.exists(logo_path):
             st.image(logo_path, width=150)
-        else:
-            st.warning("Logo not found.")
+
 
     
     with col2:
@@ -1136,6 +1138,7 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
 
 
 
