@@ -656,7 +656,7 @@ def main():
     col1, col2 = st.columns([1, 6])
     
     with col1:
-    st.image("logo.png", width=150)
+        st.image("logo.png", width=150)
 
     
     with col2:
@@ -1124,4 +1124,5 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
 
