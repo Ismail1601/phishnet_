@@ -682,7 +682,12 @@ def main():
         
         st.title("Navigation")
         
-        page = st.radio("", ["🔍 Single URL Scan", "📊 Batch Analysis", "📈 Analytics Dashboard", "📜 Scan History"])
+        page = st.radio(
+    "Select Page",
+    ["🔍 Single URL Scan", "📊 Batch Analysis", "📈 Analytics Dashboard", "📜 Scan History"],
+    label_visibility="collapsed"
+)
+
         
         st.markdown("---")
         st.subheader("Statistics")
@@ -1130,6 +1135,7 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
 
 
 
