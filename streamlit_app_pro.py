@@ -676,7 +676,7 @@ def main():
     
     # Sidebar
     with st.sidebar:
-        st.image("logo.png", width=90)
+        st.image("favicon.png", width=90)
 
         
         st.title("Navigation")
@@ -1129,6 +1129,7 @@ def display_analysis_results(analysis):
 
 if __name__ == "__main__":
     main()
+
 
 
 
